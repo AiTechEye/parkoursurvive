@@ -114,13 +114,18 @@ minetest.register_entity("parkoursurvive:player",{
 			self.active=1
 --kong
 
-		elseif self.v.y==0 and self.speed>5 and key.RMB and self.node(f).walkable and self.node({x=f.x,y=f.y+1,z=f.z}).walkable==false then
+		elseif self.v.y==0 and self.speed>9 and key.RMB and self.node(f).walkable and self.node({x=f.x,y=f.y+1,z=f.z}).walkable==false then
 			self.v.y=5
 			self.speed=30
 			self.object:set_pos({x=pos.x,y=pos.y+1,z=pos.z})
 		elseif self.v.y==0 and self.speed>0 and self.node(f).walkable then
 --hit a wall
-			self.speed=self.speed*0.9
+
+			if key.RMB and self.speed<2 then
+				self.v.y=7
+			else
+				self.speed=self.speed*0.9
+			end
 		end
 
 		self.object:set_acceleration(a)
