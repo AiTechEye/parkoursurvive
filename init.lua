@@ -86,11 +86,12 @@ minetest.register_entity("parkoursurvive:player",{
 		local r={x=pos.x+(math.sin(yaw-1.5)*-1),y=pos.y,z=pos.z+math.cos(yaw-1.5)}
 		local l={x=pos.x+(math.sin(yaw+1.5)*-1),y=pos.y,z=pos.z+math.cos(yaw+1.5)}
 
---wall climb/catleap
+
 		if self.v.y~=0 and key.RMB and math.abs(self.v.y)<20 and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable==false and
 		((self.node(f).walkable and self.node({x=f.x,y=f.y+1,z=f.z}).walkable==false)
 		 or (self.node({x=f.x,y=f.y+1,z=f.z}).walkable and self.node({x=f.x,y=f.y+2,z=f.z}).walkable==false)
 		or (self.node({x=f.x,y=f.y+2,z=f.z}).walkable and self.node({x=f.x,y=f.y+3,z=f.z}).walkable==false)) then
+--wall climb/catleap
 			a.y=0
 			self.active=1
 			if key.jump then
@@ -103,8 +104,26 @@ minetest.register_entity("parkoursurvive:player",{
 				self.v.y=0
 				self.speed=0
 			end
+		elseif key.left and self.node(r).walkable and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable==false then
+--tic tac left
+			self.tic=5
+			self.object:set_velocity({x=math.sin(yaw+1.5)*-10,y=5,z=math.cos(yaw+1.5)*10})
+			return true
+		elseif key.right and self.node(l).walkable and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable==false then
+--tic tac right
+			self.tic=5
+			self.object:set_velocity({x=math.sin(yaw-1.5)*-10,y=5,z=math.cos(yaw-1.5)*10})
+			return true
+		elseif self.tic then
+			if self.tic<0 or self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable then --self.v.y<-5 then --
+				self.tic=nil
+			else
+				self.tic=self.tic-0.1
+				return true
+			end	
+
+		elseif key.up and self.v.y==0 and self.speed>5 and self.node(f).walkable and self.node({x=f.x,y=f.y+1,z=f.z}).walkable then
 --wallrun
-		elseif self.v.y==0 and self.speed>5 and self.node(f).walkable and self.node({x=f.x,y=f.y+1,z=f.z}).walkable then
 			if self.node({x=f.x,y=f.y+2,z=f.z}).walkable then
 				self.v.y=self.speed*1.2
 			else
@@ -112,14 +131,13 @@ minetest.register_entity("parkoursurvive:player",{
 			end
 			self.speed=1
 			self.active=1
+		elseif key.up and self.v.y==0 and self.speed>9 and key.RMB and self.node(f).walkable and self.node({x=f.x,y=f.y+1,z=f.z}).walkable==false then
 --kong
-
-		elseif self.v.y==0 and self.speed>9 and key.RMB and self.node(f).walkable and self.node({x=f.x,y=f.y+1,z=f.z}).walkable==false then
 			self.v.y=5
 			self.speed=30
 			self.object:set_pos({x=pos.x,y=pos.y+1,z=pos.z})
-		elseif self.v.y==0 and self.speed>0 and self.node(f).walkable then
---hit a wall
+		elseif key.up and self.v.y==0 and self.speed>0 and self.node(f).walkable then
+--hit a wall or vault
 
 			if key.RMB and self.speed<2 then
 				self.v.y=7
@@ -166,6 +184,7 @@ minetest.register_entity("parkoursurvive:player",{
 			else
 				self.v.y=self.speed
 			end
+--run
 		elseif key.up and self.speed>=0 and self.speed<10 then
 			if self.speed<1 then
 			self.speed=2
@@ -197,6 +216,5 @@ minetest.register_entity("parkoursurvive:player",{
 	active=1,
 	speed=1,
 	type="npc",
-	team="Sam",
 	start=0.15,
 })
