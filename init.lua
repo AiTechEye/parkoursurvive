@@ -1,8 +1,6 @@
 parkoursurvive={
 	step_timer=0,
 	step_time=0.5,
-	speed=1,
-	player={},
 }
 
 minetest.register_globalstep(function(dtime)
@@ -13,16 +11,16 @@ minetest.register_globalstep(function(dtime)
 		return
 	end
 	for _,player in ipairs(minetest.get_connected_players()) do
-		if not player:get_attach() and player:get_player_control().RMB and player:get_wielded_item():get_name()=="" then
+		if not player:get_attach() and player:get_hp()>0 and player:get_player_control().RMB and player:get_wielded_item():get_name()=="" then
 
 			local pos=player:get_pos()
 			local node=minetest.registered_nodes[minetest.get_node(pos).name]
 			if node and (node.liquid_viscosity==0 and not node.climbable and node.damage_per_second==0) then
 				local e=minetest.add_entity(pos, "parkoursurvive:player")
 				e:get_luaentity().user=player
-				player:set_attach(e,"",{x=0,y=0,z=0},{x=0,y=0,z=0})
+				player:set_attach(e,"",{x=0,y=10,z=0},{x=0,y=0,z=0})
 				e:set_velocity(player:get_player_velocity())
-			--	player:set_eye_offset({x=0,y=0,z=5},{x=0,y=0,z=0})
+				--player:set_eye_offset({x=0,y=0,z=0},{x=0,y=0,z=0})
 			end
 		end
 
@@ -39,7 +37,11 @@ minetest.register_entity("parkoursurvive:player",{
 	pointable = false,
 	on_punch=function(self, puncher, time_from_last_punch, tool_capabilities)
 		if not (puncher:is_player() and puncher:get_player_name()==self.user:get_player_name()) and tool_capabilities and tool_capabilities.damage_groups and tool_capabilities.damage_groups.fleshy then
-			self.user:set_hp(self.user:get_hp()-tool_capabilities.damage_groups.fleshy)
+			local hp=self.user:get_hp()-tool_capabilities.damage_groups.fleshy
+			if hp<1 then
+				self.exit(self,{},self.object:get_pos())
+			end
+			self.user:set_hp(hp)
 		end
 		return self
 	end,
@@ -53,6 +55,17 @@ minetest.register_entity("parkoursurvive:player",{
 		pos.y=pos.y+0.1
 		self.object:set_pos(pos)
 		return self
+	end,
+	exit=function(self,key,pos)
+		local node=self.node(pos)
+		if (not key.RMB and not key.jump and math.abs(self.speed)<0.5) or self.user:get_hp()<=0 or node.liquid_viscosity>0 or node.climbable or node.damage_per_second>0 then
+			if self.user then
+				self.falling(self,pos)
+				self.user:set_detach()
+			end
+			self.object:remove()
+			return
+		end
 	end,
 	falling=function(self,pos)
 		if self.v.y<0 and not self.fallingfrom then
@@ -86,14 +99,12 @@ minetest.register_entity("parkoursurvive:player",{
 		local r={x=pos.x+(math.sin(yaw-1.5)*-1),y=pos.y,z=pos.z+math.cos(yaw-1.5)}
 		local l={x=pos.x+(math.sin(yaw+1.5)*-1),y=pos.y,z=pos.z+math.cos(yaw+1.5)}
 
-
-		if self.v.y~=0 and key.RMB and math.abs(self.v.y)<20 and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable==false and
+		if key.RMB and math.abs(self.v.y)<20 and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable==false and not self.node({x=pos.x,y=pos.y+2,z=pos.z}).walkable and
 		((self.node(f).walkable and self.node({x=f.x,y=f.y+1,z=f.z}).walkable==false)
 		 or (self.node({x=f.x,y=f.y+1,z=f.z}).walkable and self.node({x=f.x,y=f.y+2,z=f.z}).walkable==false)
 		or (self.node({x=f.x,y=f.y+2,z=f.z}).walkable and self.node({x=f.x,y=f.y+3,z=f.z}).walkable==false)) then
 --wall climb/catleap
 			a.y=0
-			self.active=1
 			if key.jump then
 				self.v.y=5
 				self.speed=2
@@ -104,24 +115,31 @@ minetest.register_entity("parkoursurvive:player",{
 				self.v.y=0
 				self.speed=0
 			end
+			self.tic=nil
 		elseif key.left and self.node(r).walkable and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable==false then
 --tic tac left
-			self.tic=5
-			self.object:set_velocity({x=math.sin(yaw+1.5)*-10,y=5,z=math.cos(yaw+1.5)*10})
+			if self.v.y>-5 then
+				self.v.y=5
+			end
+			self.tic=true
+			self.object:set_velocity({x=math.sin(yaw+1.5)*-10,y=self.v.y,z=math.cos(yaw+1.5)*10})
 			return true
 		elseif key.right and self.node(l).walkable and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable==false then
 --tic tac right
-			self.tic=5
-			self.object:set_velocity({x=math.sin(yaw-1.5)*-10,y=5,z=math.cos(yaw-1.5)*10})
+			if self.v.y>-5 then
+				self.v.y=5
+			end
+			self.tic=true
+			self.object:set_velocity({x=math.sin(yaw-1.5)*-10,y=self.v.y,z=math.cos(yaw-1.5)*10})
+
 			return true
 		elseif self.tic then
-			if self.tic<0 or self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable then --self.v.y<-5 then --
+			if not (key.left or key.right) or self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable then --self.v.y<-5 then --
 				self.tic=nil
 			else
-				self.tic=self.tic-0.1
+				self.object:set_acceleration(a)
 				return true
 			end	
-
 		elseif key.up and self.v.y==0 and self.speed>5 and self.node(f).walkable and self.node({x=f.x,y=f.y+1,z=f.z}).walkable then
 --wallrun
 			if self.node({x=f.x,y=f.y+2,z=f.z}).walkable then
@@ -130,15 +148,13 @@ minetest.register_entity("parkoursurvive:player",{
 				self.v.y=self.speed
 			end
 			self.speed=1
-			self.active=1
-		elseif key.up and self.v.y==0 and self.speed>9 and key.RMB and self.node(f).walkable and self.node({x=f.x,y=f.y+1,z=f.z}).walkable==false then
+		elseif key.up and self.v.y>-10 and self.speed>9 and self.speed<15 and key.LMB and self.node(f).walkable then
 --kong
-			self.v.y=5
-			self.speed=30
+			self.v.y=7
+			self.speed=10
 			self.object:set_pos({x=pos.x,y=pos.y+1,z=pos.z})
-		elseif key.up and self.v.y==0 and self.speed>0 and self.node(f).walkable then
+		elseif key.up and self.v.y==0 and self.speed>0 and self.node(f).walkable and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable then
 --hit a wall or vault
-
 			if key.RMB and self.speed<2 then
 				self.v.y=7
 			else
@@ -158,36 +174,27 @@ minetest.register_entity("parkoursurvive:player",{
 		end
 		local key=self.user:get_player_control()
 		local pos=self.object:get_pos()
-		local node=self.node(pos)
+		self.exit(self,key,pos)
 		self.v=self.object:get_velocity()
 		self.object:set_yaw(self.user:get_look_yaw()-math.pi/2)
 --exit
-		if (not key.RMB and not key.jump and math.abs(self.speed)<0.5 and self.active==0) or self.user:get_hp()<=0 or node.liquid_viscosity>0 or node.climbable or node.damage_per_second>0 then
-			if self.user then
-				self.falling(self,pos)
-				self.user:set_detach()
-			end
-			self.object:remove()
-			return
-		end
-		self.active=0
-
 		self.falling(self,pos)
 
 		if self.walls(self,pos,key) then return end
+
 --control & speed
-		if key.jump and self.v.y==0 then
+		if key.jump and self.v.y==0 and not self.fallingfrom then
 --precision jump
 			if self.speed==0 then
 				self.v.y=7
 				self.speed=14
-			else
+			elseif not self.node({x=pos.x,y=pos.y+2,z=pos.z}).walkable then
 				self.v.y=self.speed
 			end
 --run
 		elseif key.up and self.speed>=0 and self.speed<10 then
 			if self.speed<1 then
-			self.speed=2
+			self.speed=4
 			end
 			self.speed=self.speed*1.05
 		elseif not self.fallingfrom then
@@ -202,7 +209,6 @@ minetest.register_entity("parkoursurvive:player",{
 		end
 
 		if math.abs(self.speed)>1 then
-			self.active=1
 			local yaw=self.object:get_yaw()
 			if yaw ~= yaw or type(yaw)~="number" then
 				return
@@ -213,8 +219,7 @@ minetest.register_entity("parkoursurvive:player",{
 
 		self.object:set_velocity(self.v)
 	end,
-	active=1,
-	speed=1,
+	speed=0,
 	type="npc",
 	start=0.15,
 })
