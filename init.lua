@@ -58,7 +58,7 @@ minetest.register_entity("parkoursurvive:player",{
 	end,
 	exit=function(self,key,pos)
 		local node=self.node(pos)
-		if (not key.RMB and not key.jump and math.abs(self.speed)<0.5) or self.user:get_hp()<=0 or node.liquid_viscosity>0 or node.climbable or node.damage_per_second>0 then
+		if not self.v or (not key.RMB and not key.jump and math.abs(self.speed)<0.5) or self.user:get_hp()<=0 or node.liquid_viscosity>0 or node.climbable or node.damage_per_second>0 then
 			if self.user then
 				self.falling(self,pos)
 				self.user:set_detach()
@@ -174,8 +174,8 @@ minetest.register_entity("parkoursurvive:player",{
 		end
 		local key=self.user:get_player_control()
 		local pos=self.object:get_pos()
-		self.exit(self,key,pos)
 		self.v=self.object:get_velocity()
+		self.exit(self,key,pos)
 		self.object:set_yaw(self.user:get_look_yaw()-math.pi/2)
 --exit
 		self.falling(self,pos)
