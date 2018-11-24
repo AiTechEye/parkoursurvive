@@ -28,21 +28,20 @@ end)
 
 parkoursurvive.power=function(player,add)
 	local a=parkoursurvive.player[player:get_player_name()]
-	if not a then
+	if not a or (a.power>=100 and add>0) then
 		return
-	elseif a.power+add>100 then
-		a.power=100
 	elseif a.power+add<-10 then
 		a.power=-10
 	else
 		a.power=a.power+add
 	end
 	if a.power>=100 then
+		a.power=100
 		player:hud_change(a.bar, "number", 0)
 		player:hud_change(a.bar_back, "number", 0)
 	else
-		player:hud_change(a.bar_back, "number", 100)
 		player:hud_change(a.bar, "number", a.power)
+		player:hud_change(a.bar_back, "number", 100)
 	end
 end
 
@@ -74,6 +73,9 @@ minetest.register_globalstep(function(dtime)
 				player:set_attach(e,"",{x=0,y=10,z=0},{x=0,y=0,z=0})
 				e:set_velocity(player:get_player_velocity())
 				--player:set_eye_offset({x=0,y=0,z=0},{x=0,y=0,z=0})
+				local p=parkoursurvive.player[player:get_player_name()]
+				player:hud_change(p.bar_back, "number", 100)
+				player:hud_change(p.bar, "number", p.power)
 			end
 		else
 			parkoursurvive.power(player,2)
@@ -100,7 +102,7 @@ minetest.register_entity("parkoursurvive:player",{
 		return self
 	end,
 	on_activate=function(self, staticdata)
-		minetest.after(0.1, function(self)
+		minetest.after(0, function(self)
 			if not (self.user and self.user:get_pos()) then
 				self.object:remove()
 				return
@@ -116,6 +118,7 @@ minetest.register_entity("parkoursurvive:player",{
 		local node=self.node(pos)
 		if power<0 or not self.v or (not key.RMB and not key.jump and math.abs(self.speed)<0.5) or self.user:get_hp()<=0 or node.liquid_viscosity>0 or node.climbable or node.damage_per_second>0 then
 			if self.user then
+				parkoursurvive.power(self.user,0)
 				self.falling(self,pos)
 				self.user:set_detach()
 			end
@@ -213,7 +216,7 @@ minetest.register_entity("parkoursurvive:player",{
 			self.speed=1
 		elseif key.up and self.v.y>-10 and self.speed>9 and self.speed<15 and key.LMB and self.node(f).walkable then
 --kong
-			parkoursurvive.power(self.user,-5)
+			parkoursurvive.power(self.user,-10)
 			self.v.y=7
 			self.speed=10
 			self.object:set_pos({x=pos.x,y=pos.y+1,z=pos.z})
@@ -243,7 +246,6 @@ minetest.register_entity("parkoursurvive:player",{
 			key={}
 		end
 
-
 		local pos=self.object:get_pos()
 		self.v=self.object:get_velocity()
 		self.exit(self,key,pos,power)
@@ -269,7 +271,7 @@ minetest.register_entity("parkoursurvive:player",{
 			if self.speed<1 then
 				self.speed=4
 			end
-			parkoursurvive.power(self.user,-0.2)
+			parkoursurvive.power(self.user,-0.4)
 			self.speed=self.speed*1.05
 		elseif not self.fallingfrom then
 			if math.abs(self.speed)<0.5 then
