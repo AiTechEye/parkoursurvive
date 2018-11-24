@@ -2,7 +2,25 @@ parkoursurvive={
 	step_timer=0,
 	step_time=0.5,
 	player={},
+	playeranim={
+		stand={x=1,y=39,speed=30},
+		walk={x=41,y=61,speed=30},
+		mine={x=65,y=75,speed=30},
+		hugwalk={x=80,y=99,speed=30},
+		lay={x=113,y=123,speed=0},
+		sit={x=101,y=111,speed=0},
+	},
 }
+
+parkoursurvive.player_anim=function(self,typ)
+	if typ==self.anim then
+		return
+	end
+	self.anim=typ
+	self.object:set_animation({x=parkoursurvive.playeranim[typ].x, y=parkoursurvive.playeranim[typ].y, },parkoursurvive.playeranim[typ].speed,0)
+	return self
+end
+
 minetest.register_on_joinplayer(function(player)
 	local name=player:get_player_name()
 	parkoursurvive.player[name]={
@@ -68,14 +86,18 @@ minetest.register_globalstep(function(dtime)
 			local pos=player:get_pos()
 			local node=minetest.registered_nodes[minetest.get_node(pos).name]
 			if node and (node.liquid_viscosity==0 and not node.climbable and node.damage_per_second==0) then
-				local e=minetest.add_entity(pos, "parkoursurvive:player")
-				e:get_luaentity().user=player
-				player:set_attach(e,"",{x=0,y=10,z=0},{x=0,y=0,z=0})
-				e:set_velocity(player:get_player_velocity())
-				--player:set_eye_offset({x=0,y=0,z=0},{x=0,y=0,z=0})
+				local e=minetest.add_entity({x=pos.x,y=pos.y+1,z=pos.z}, "parkoursurvive:player")
 				local p=parkoursurvive.player[player:get_player_name()]
+				p.textures=player:get_properties().textures
+				e:get_luaentity().user=player
+				e:set_velocity(player:get_player_velocity())
+				e:set_properties({textures=p.textures})
+				e:set_yaw(player:get_look_yaw()-math.pi/2)
+				player:set_attach(e,"",{x=0,y=10,z=0},{x=0,y=0,z=0})
 				player:hud_change(p.bar_back, "number", 100)
 				player:hud_change(p.bar, "number", p.power)
+				player:set_properties({textures={"parkoursurvive_t.png","parkoursurvive_t.png","parkoursurvive_t.png","parkoursurvive_t.png","parkoursurvive_t.png","parkoursurvive_t.png"}})
+				player:set_eye_offset({x=0,y=-10,z=1},{x=0,y=0,z=0})
 			end
 		else
 			parkoursurvive.power(player,2)
@@ -84,13 +106,13 @@ minetest.register_globalstep(function(dtime)
 end)
 
 minetest.register_entity("parkoursurvive:player",{
-	hp_max = 20,
+	hp_max = 10000,
 	physical = true,
-	collisionbox = {-0.35,0,-0.35,0.35,1.8,0.35},
-	visual =  "sprite",
-	textures = {"parkoursurvive_t.png"},
+	collisionbox = {-0.35,-1.0,-0.35,0.35,0.8,0.35},
+	visual =  "mesh",
+	mesh="parkoursurvive_character.b3d",
 	makes_footstep_sound = true,
-	pointable = false,
+--	pointable = false, makes players can cheat in pvp
 	on_punch=function(self, puncher, time_from_last_punch, tool_capabilities)
 		if not (puncher:is_player() and puncher:get_player_name()==self.user:get_player_name()) and tool_capabilities and tool_capabilities.damage_groups and tool_capabilities.damage_groups.fleshy then
 			local hp=self.user:get_hp()-tool_capabilities.damage_groups.fleshy
@@ -109,15 +131,14 @@ minetest.register_entity("parkoursurvive:player",{
 			end
 			self.username=self.user:get_player_name()
 		end, self)
-		local pos=self.object:get_pos()
-		pos.y=pos.y+0.1
-		self.object:set_pos(pos)
 		return self
 	end,
 	exit=function(self,key,pos,power)
 		local node=self.node(pos)
 		if power<0 or not self.v or (not key.RMB and not key.jump and math.abs(self.speed)<0.5) or self.user:get_hp()<=0 or node.liquid_viscosity>0 or node.climbable or node.damage_per_second>0 then
-			if self.user then
+			if self.user and self.user:get_pos() then
+				self.user:set_eye_offset({x=0,y=0,z=0},{x=0,y=0,z=0})
+				self.user:set_properties({textures=parkoursurvive.player[self.username].textures})
 				parkoursurvive.power(self.user,0)
 				self.falling(self,pos)
 				self.user:set_detach()
@@ -140,6 +161,7 @@ minetest.register_entity("parkoursurvive:player",{
 		end
 	end,
 	node=function(pos)
+		pos={x=pos.x,y=pos.y-0.5,z=pos.z}
 		return minetest.registered_nodes[minetest.get_node(pos).name] or minetest.registered_nodes["air"]
 	end,
 	walls=function(self,pos,key)
@@ -285,13 +307,16 @@ minetest.register_entity("parkoursurvive:player",{
 		else
 			self.object:set_acceleration({x=0,y=-20,z=0})
 		end
-		if math.abs(self.speed)>1 then
+		if math.abs(self.speed)>0 then
+			parkoursurvive.player_anim(self,"walk")
 			local yaw=self.object:get_yaw()
 			if yaw ~= yaw or type(yaw)~="number" then
 				return
 			end
 			self.v.x=math.sin(yaw)*-self.speed
 			self.v.z=math.cos(yaw)*self.speed
+		else
+			parkoursurvive.player_anim(self,"stand")
 		end
 
 		self.object:set_velocity(self.v)
