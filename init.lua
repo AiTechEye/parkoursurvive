@@ -194,7 +194,7 @@ minetest.register_entity("parkoursurvive:player",{
 			elseif key.down then
 				self.v.y=7
 				self.speed=-10
-				parkoursurvive.power(self.user,-5)
+				parkoursurvive.power(self.user,-3)
 			else
 				self.v.y=0
 				self.speed=0
@@ -230,26 +230,29 @@ minetest.register_entity("parkoursurvive:player",{
 --wallrun
 			if self.node({x=f.x,y=f.y+2,z=f.z}).walkable then
 				self.v.y=self.speed*1.2
-				parkoursurvive.power(self.user,-7)
-			else
 				parkoursurvive.power(self.user,-3)
+			else
+				parkoursurvive.power(self.user,-2)
 				self.v.y=self.speed
 			end
 			self.speed=1
-		elseif key.up and self.v.y>-10 and self.speed>9 and self.speed<15 and key.LMB and self.node(f).walkable then
+		elseif key.up and key.LMB and self.v.y>-10 and self.speed>5 and self.node(f).walkable==false and self.node({x=f.x,y=f.y+1,z=f.z}).walkable and self.node({x=f.x,y=f.y-1,z=f.z}).walkable==false then
+--"under bar"
+			parkoursurvive.power(self.user,-1)
+			self.object:set_pos({x=pos.x,y=pos.y-1,z=pos.z})
+		elseif key.up and key.LMB and self.v.y>-10 and self.speed>9 and self.speed<15 and self.node(f).walkable then
 --kong
-			parkoursurvive.power(self.user,-10)
+			parkoursurvive.power(self.user,-5)
 			self.v.y=7
 			self.speed=10
 			self.object:set_pos({x=pos.x,y=pos.y+1,z=pos.z})
-		elseif key.up and self.v.y==0 and self.speed>0 and self.node(f).walkable and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable then
---hit a wall or vault
-			if key.RMB and self.speed<2 then
-				parkoursurvive.power(self.user,-2)
-				self.v.y=7
-			else
-				self.speed=self.speed*0.9
-			end
+		elseif key.up and key.RMB and self.v.y==0 and self.node(f).walkable and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable then
+--vault
+			parkoursurvive.power(self.user,-1)
+			self.v.y=7
+		elseif key.up and self.v.y==0 and self.speed<2 and self.node(f).walkable and self.node({x=pos.x,y=pos.y-1,z=pos.z}).walkable then
+--hit a wall
+			self.speed=self.speed*0.9
 		end
 
 		self.object:set_acceleration(a)
@@ -283,17 +286,17 @@ minetest.register_entity("parkoursurvive:player",{
 			if self.speed==0 then
 				self.v.y=7
 				self.speed=14
-				parkoursurvive.power(self.user,-5)
+				parkoursurvive.power(self.user,-3)
 			elseif not self.node({x=pos.x,y=pos.y+2,z=pos.z}).walkable then
 				self.v.y=self.speed
-				parkoursurvive.power(self.user,-5)
+				parkoursurvive.power(self.user,-2)
 			end
 --run
 		elseif key.up and self.speed>=0 and self.speed<10 then
 			if self.speed<1 then
 				self.speed=4
 			end
-			parkoursurvive.power(self.user,-0.4)
+			parkoursurvive.power(self.user,-0.3)
 			self.speed=self.speed*1.05
 		elseif not self.fallingfrom then
 			if math.abs(self.speed)<0.5 then
