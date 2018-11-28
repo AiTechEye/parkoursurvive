@@ -65,7 +65,7 @@ end
 
 
 minetest.register_on_respawnplayer(function(player)
-	parkoursurvive.player[player:get_player_name()].power=40
+	parkoursurvive.player[player:get_player_name()].power=100
 end)
 
 minetest.register_on_leaveplayer(function(player)
