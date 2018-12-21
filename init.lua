@@ -135,7 +135,7 @@ minetest.register_entity("parkoursurvive:player",{
 	end,
 	exit=function(self,key,pos,power)
 		local node=self.node(pos)
-		if power<0 or not self.v or (not key.RMB and not key.jump and math.abs(self.speed)<0.5) or self.user:get_hp()<=0 or node.liquid_viscosity>0 or node.climbable or node.damage_per_second>0 then
+		if not power or power<0 or not self.v or (not key.RMB and not key.jump and math.abs(self.speed)<0.5) or self.user:get_hp()<=0 or node.liquid_viscosity>0 or node.climbable or node.damage_per_second>0 then
 			if self.user and self.user:get_pos() then
 				self.user:set_eye_offset({x=0,y=0,z=0},{x=0,y=0,z=0})
 				self.user:set_properties({textures=parkoursurvive.player[self.username].textures})
