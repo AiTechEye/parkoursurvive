@@ -1,6 +1,6 @@
 # parkoursurvive
 
-license: CC0
+License: code: LGPL-2.1, media: CC BY-SA-4.0
 
 adds parkour ability to players
 hold place / right mouse button to start
